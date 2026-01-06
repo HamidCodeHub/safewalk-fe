@@ -1,6 +1,6 @@
 import { AuthTokens, ApiError } from '@/models/types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.146:8080';
 
 class ApiClient {
   private accessToken: string | null = null;

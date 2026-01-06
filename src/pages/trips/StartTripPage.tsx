@@ -10,6 +10,7 @@ import { savedLocationsApi } from '@/api/savedLocations';
 import { tripsApi } from '@/api/trips';
 import { SavedLocationResponse, TransportMode, ApiError } from '@/models/types';
 import { cn } from '@/lib/utils';
+//import Geolocation from '@react-native-community/geolocation';
 
 const transportModes: { mode: TransportMode; icon: typeof Car; label: string }[] = [
   { mode: 'WALKING', icon: Footprints, label: 'Walking' },
@@ -49,6 +50,95 @@ export function StartTripPage() {
     setError(null);
 
     try {
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by your browser');
+      }
+
+      // Get real GPS coordinates from browser
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        });
+      });
+
+      const currentLat = position.coords.latitude;
+      const currentLng = position.coords.longitude;
+
+      await tripsApi.start({
+        destinationId: selectedLocation,
+        currentLatitude: currentLat,
+        currentLongitude: currentLng,
+        transportMode: selectedMode,
+      });
+
+      navigate('/trips/active');
+    } catch (err) {
+      if (err instanceof GeolocationPositionError) {
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setError('Location permission denied. Please enable location access.');
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setError('Location unavailable. Please check your device settings.');
+            break;
+          case err.TIMEOUT:
+            setError('Location request timed out. Please try again.');
+            break;
+        }
+      } else {
+        const apiError = err as ApiError;
+        setError(apiError.message || 'Failed to start trip');
+      }
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+/*
+  const handleStartTrip = async () => {
+    if (!selectedLocation) return;
+
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      // Get real GPS coordinates
+      const position = await new Promise((resolve, reject) => {
+        Geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+      });
+
+      const currentLat = position.coords.latitude;
+      const currentLng = position.coords.longitude;
+
+      await tripsApi.start({
+        destinationId: selectedLocation,
+        currentLatitude: currentLat,
+        currentLongitude: currentLng,
+        transportMode: selectedMode,
+      });
+
+      navigate('/trips/active');
+    } catch (err) {
+      const apiError = err as ApiError;
+      setError(apiError.message || 'Failed to get location or start trip');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+  *********************************
+  const handleStartTrip = async () => {
+    if (!selectedLocation) return;
+
+    setIsStarting(true);
+    setError(null);
+
+    try {
       // Mock current location (simulated GPS)
       const currentLat = 37.7749 + (Math.random() - 0.5) * 0.01;
       const currentLng = -122.4194 + (Math.random() - 0.5) * 0.01;
@@ -68,7 +158,7 @@ export function StartTripPage() {
       setIsStarting(false);
     }
   };
-
+*/
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
